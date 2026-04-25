@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   Activity, 
   Settings, 
@@ -14,9 +14,6 @@ import {
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { analyzeDTC } from './lib/gemini';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
-import * as THREE from 'three';
 
 type VehicleCategory = 'light' | 'heavy' | 'equipment';
 
@@ -38,7 +35,7 @@ interface DiagnosisResult {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dtc' | 'fuses' | 'admin' | '3d'>('3d');
+  const [activeTab, setActiveTab] = useState<'dtc' | 'fuses' | 'admin'>('dtc');
   const [vehicle, setVehicle] = useState<VehicleContext>({
     type: 'light',
     brand: 'Toyota',
@@ -61,12 +58,6 @@ export default function App() {
         
         <nav className="flex-1 p-4 space-y-2">
           <div className="text-[10px] uppercase font-bold tracking-widest text-slate-500 px-3 pb-2">Diagnostics</div>
-          <NavItem 
-            icon={<Car size={18} />} 
-            label="3D Dashboard" 
-            isActive={activeTab === '3d'} 
-            onClick={() => setActiveTab('3d')} 
-          />
           <NavItem 
             icon={<Activity size={18} />} 
             label="DTC Lookup" 
@@ -128,7 +119,6 @@ export default function App() {
         </header>
 
         <div className="flex-1 p-4 md:p-8">
-          {activeTab === '3d' && <VehicleVisualizer3D vehicle={vehicle} />}
           {activeTab === 'dtc' && <DTCAnalyzer vehicle={vehicle} onChangeVehicle={setVehicle} />}
           {activeTab === 'fuses' && <FuseBoxViewer vehicle={vehicle} />}
           {activeTab === 'admin' && <AdminPanel />}
@@ -554,117 +544,6 @@ function AdminPanel() {
              </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function CarModel() {
-  return (
-    <mesh rotation={[0, Math.PI / 4, 0]}>
-      <boxGeometry args={[2, 0.5, 4]} />
-      <meshStandardMaterial color="#0A0C10" metalness={0.8} roughness={0.2} />
-      {/* Glow trim */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[2.05, 0.1, 4.05]} />
-        <meshBasicMaterial color="#00A3FF" transparent opacity={0.3} wireframe />
-      </mesh>
-    </mesh>
-  );
-}
-
-function ScanLine() {
-  const ref = useRef<THREE.Mesh>(null);
-  
-  useFrame(({ clock }) => {
-    if (ref.current) {
-      ref.current.position.z = Math.sin(clock.getElapsedTime()) * 2;
-    }
-  });
-
-  return (
-    <mesh ref={ref} rotation={[0, Math.PI / 4, 0]} position={[0, 0.25, 0]}>
-      <boxGeometry args={[2.5, 0.05, 0.1]} />
-      <meshBasicMaterial color="#00A3FF" transparent opacity={0.6} />
-    </mesh>
-  );
-}
-
-function Hotspot({ position, color = "red" }: { position: [number, number, number], color?: string }) {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (ref.current) {
-       const scale = 1 + Math.sin(clock.getElapsedTime() * 4) * 0.2;
-       ref.current.scale.set(scale, scale, scale);
-    }
-  });
-  return (
-    <mesh position={position} ref={ref}>
-      <sphereGeometry args={[0.15, 16, 16]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} />
-    </mesh>
-  );
-}
-
-function VehicleVisualizer3D({ vehicle }: { vehicle: VehicleContext }) {
-  return (
-    <div className="w-full h-[calc(100vh-8rem)] min-h-[500px] flex flex-col space-y-6">
-      <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-end flex-shrink-0">
-        <div>
-          <h2 className="italic text-xs text-slate-500 uppercase tracking-widest mb-1">Module Active</h2>
-          <h1 className="text-2xl font-bold tracking-tight text-white">3D Diagnostic Dashboard</h1>
-        </div>
-      </div>
-      
-      <div className="flex-1 rounded-xl border border-slate-800 overflow-hidden relative shadow-2xl bg-[#050608]">
-        <div className="absolute top-4 left-4 z-10 p-4 bg-black/60 backdrop-blur-md border border-slate-700/50 rounded-lg text-xs font-mono text-white shadow-lg pointer-events-none">
-          <div className="text-orange-500 mb-2 font-bold flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-            VEHICLE SCAN RUNNING
-          </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            <span className="text-slate-500">TYPE:</span><span>{vehicle.type.toUpperCase()}</span>
-            <span className="text-slate-500">MODEL:</span><span>{vehicle.brand} {vehicle.model}</span>
-            <span className="text-slate-500">YEAR:</span><span>{vehicle.year}</span>
-          </div>
-          <div className="mt-4 pt-3 border-t border-slate-700/50 text-[10px] text-slate-400">
-            Drag to rotate • Scroll to zoom
-          </div>
-        </div>
-
-        <div className="absolute bottom-4 right-4 z-10 flex gap-2 pointer-events-none">
-           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700/50 shadow-lg">
-             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-             <span className="text-[10px] text-white font-mono uppercase tracking-wider">Engine Fault Detected</span>
-           </div>
-           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700/50 shadow-lg">
-             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-             <span className="text-[10px] text-white font-mono uppercase tracking-wider">Sensors Nominal</span>
-           </div>
-        </div>
-        
-        <Canvas camera={{ position: [5, 3, 5], fov: 50 }} className="w-full h-full cursor-move" shadows>
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
-          
-          <group position={[0, -0.5, 0]}>
-            <CarModel />
-            <ScanLine />
-            
-            {/* Example Hotspots */}
-            <Hotspot position={[0.5, 0.4, 0.8]} color="#ef4444" /> {/* Red fault */}
-            <Hotspot position={[-0.5, 0.4, -0.8]} color="#10b981" /> {/* Emerald normal */}
-            <Hotspot position={[0, 0.4, -1.5]} color="#10b981" />
-          </group>
-
-          <OrbitControls 
-            enableZoom={true} 
-            maxPolarAngle={Math.PI / 2 - 0.05} // Prevent camera from going under the floor
-            minDistance={3}
-            maxDistance={10}
-          />
-          <Environment preset="night" />
-        </Canvas>
       </div>
     </div>
   );
